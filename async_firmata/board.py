@@ -107,7 +107,10 @@ class Board:
         """
         Handle pin state
         """
-        pin: Pin = self.pins[pin]
+        if mode == ANALOG_INPUT:
+            pin: Pin = self.analog[pin]
+        else:
+            pin: Pin = self.digital[pin]
         value = reduce(lambda x, y: x+y, (val*(2**(index*7)) for index, val in enumerate(state))) / (2**pin.capabilities[mode]-1)
         pin.value = value
 
