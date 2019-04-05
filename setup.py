@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="async-firmata",
-    version="0.0.2",
+    version="0.0.3",
     author="Lennart K",
     description="An asynchronous interface for the Firmata protocol",
     long_description=long_description,
