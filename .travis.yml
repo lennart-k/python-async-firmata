@@ -1,9 +1,17 @@
 dist: xenial
 language: python
-python:
-- '3.5'
-- '3.6'
-- '3.7'
+
+matrix:
+  include:
+    - name: Python 3.5 Test
+      python: "3.5"
+      env: PY_VERSION=3.5
+    - name: Python 3.6 Test
+      python: "3.6"
+      env: PY_VERSION=3.6
+    - name: Python 3.7 Test
+      python: "3.7"
+      env: PY_VERSION=3.7
 
 install:
   - pip install pylint
@@ -17,7 +25,7 @@ deploy:
   password:
     secure: JguO+a3giKy9QNylg03QzrSo5N+iIgM764mGQFbfdva4jJdICAO9y9JBCUOpiikV7fCr3bLl1QhWSrynloHdYSDedFOJmsqs53ihFuINvwCzkhhS46SF6MXDZRanoKsnuid2DvNITplKDgbvKAIjC/kKzIQGbfyAPbTB86HzOMzEVP6YmMirftILFupiYW+JWAU4sIwmbwfUXRvplSg41eIeAlvHCHwnE8g5Id/TzLNj2Aj5w/IRDrAV2gNdAo3Ckb03phi28UP5Q5vXRV3FmtN5jEq/a3dGUKl7PsRIzdTm/JJ302XjPpPxt08jZmKobKQ9IiiFhXfz18SAs/a0MsM+48Ox4S6tbpr9W1xm6NZQI0gaylrXbWjB9BMH+G81tWxtUQsdruC7tYX8BkT34PcQmJrdl/fxJcjyhDOhzgk9q0mlE2NIhQXGVuYYEvCortwwIHARQuEK359NUv9ReLSnC3b73EahUxSIDLYMl6kxgIWgj5nL76s3peU5qUKLyukSKhaNPm9Y5QPXVi9Vgqmi2YHuk155nbkpxe2t3OQHUoXsqOtjNfy9Ra8sB4A1zZMp8/CfNHUNkniEI4hoH/rKaI3G3WRF9egn9HjCAb0LEwRQ4JkKuffCRO+1szENJEXPY1cT/CZO936AULy4t1q6fSvUVngbahJ/EIfTNrI=
   on:
-    tags: true
+    tags: false
     branch: master
     condition:
-    python: "3.7"
+      env: PY_VERSION=3.7
