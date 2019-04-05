@@ -43,7 +43,7 @@ class Pin:
 
     async def digital_read(self):
         if self.mode == UNAVAILABLE:
-            raise IOError(f"Pin {self.id} is unavailable")
+            raise IOError("Pin {id} is unavailable".format(id=self.id))
         return self.value
 
     def __repr__(self):
