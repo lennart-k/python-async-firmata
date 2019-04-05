@@ -5,6 +5,12 @@ python:
 - '3.6'
 - '3.7'
 
+install:
+  - pip install pylint
+
+script:
+- python -m pylint
+
 deploy:
   provider: pypi
   user: lennart-k
