@@ -189,13 +189,14 @@ class Board:
         return self._ready.is_set()
 
 class SerialBoard(Board):
-    def __init__(self, port, loop):
+    def __init__(self, port, loop, timeout: int = None):
         self.port = port
         self.loop = loop
+        self.timeout = timeout
 
 
     async def setup(self):
-        reader, writer = await serial_asyncio.create_serial_connection(self.loop, partial(SerialIO, board=self), self.port, baudrate=57600)
+        reader, writer = await serial_asyncio.create_serial_connection(self.loop, partial(SerialIO, board=self), self.port, baudrate=57600, timeout=self.timeout)
         super().__init__(reader=reader, writer=writer)
         await super().setup()
 
