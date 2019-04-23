@@ -1,3 +1,4 @@
+import asyncio
 from collections import defaultdict
 
 from .const import *
@@ -13,6 +14,7 @@ class Pin:
         self.type = type
         self._mode = mode
         self.capabilities = defaultdict(int)
+        self.reporting = False
 
         capabilities = spec[:]
         while capabilities:
@@ -41,10 +43,44 @@ class Pin:
         else:
             raise CapabilityNotAvailable()
 
+    async def set_reporting(self, value: bool):
+        """
+        Send a report request.
+        This is needed if you want to read inputs
+        """
+        if self.type == ANALOG:
+            await self.board.send_data(bytearray([REPORT_ANALOG_PIN+self.id, value]))
+        if self.type == DIGITAL:
+            await self.board.send_data(bytearray([REPORT_DIGITAL_PIN+self.id, value]))
+
     async def digital_read(self):
+        """
+        Returns a digital value
+        For analog pins it returns if the analog value is >= half of the maximum value
+        """
         if self.mode == UNAVAILABLE:
             raise IOError("Pin {id} is unavailable".format(id=self.id))
+        if self.type == ANALOG:
+            return int(self.value >= 2**self.capabilities[ANALOG_INPUT]/2)
         return self.value
+
+    async def analog_read(self):
+        """
+        This does not trigger a read
+        It just returns the value updated by analog reports or set by you
+        That means you need to do Pin.set_reporting(True) to read input
+        """
+        return self.value
+
+    async def _update_analog(self, value: int):
+        if not value == self.value:
+            self.value = value
+            asyncio.run_coroutine_threadsafe(self.board.on_value_change(self, self.type, value), loop=self.board.loop)
+
+    async def _update_digital(self, value: bool):
+        if not value == self.value:
+            self.value = value
+            asyncio.run_coroutine_threadsafe(self.board.on_value_change(self, self.type, value), loop=self.board.loop)
 
     def __repr__(self):
         return "<Pin id={id} mode={mode} value={value}>".format(id=self.id, mode=self.mode, value=self.value)

@@ -1,2 +1,6 @@
 test.py
 **/__pycache__
+async_firmata.egg-info
+dist
+build
+.pytest_cache
