@@ -226,7 +226,7 @@ class Board:
             asyncio.ensure_future(handler(*data))
 
     async def close(self):
-        asyncio.run_coroutine_threadsafe(self.on_close())
+        asyncio.run_coroutine_threadsafe(self.on_close(), loop=self.board.loop)
         self._ready.clear()
 
     @property
