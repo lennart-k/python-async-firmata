@@ -4,3 +4,5 @@ async_firmata.egg-info
 dist
 build
 .pytest_cache
+protocol.md
+.vscode

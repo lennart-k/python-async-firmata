@@ -1,86 +1,108 @@
-import asyncio
+from async_firmata.const import *
+from async_firmata.exceptions import CapabilityNotAvailable
+
 from collections import defaultdict
+import asyncio
 
-from .const import *
-from .exceptions import CapabilityNotAvailable
-
+from typing import Union, Coroutine, Callable
 
 class Pin:
-    def __init__(self, board, spec: list, pin_id: int, type: str, mode: int = None):
-        self.board = board
-        self.spec = spec
-        self.id = pin_id
-        self.value = 0
-        self.type = type
-        self._mode = mode
-        self.capabilities = defaultdict(int)
-        self.reporting = False
+    _mode: int
+    _value: int
 
-        capabilities = spec[:]
-        while capabilities:
-            key, value = capabilities.pop(0), capabilities.pop(0)
-            self.capabilities[key] = value
+    def __init__(self, board, id: int, type: str, capabilities: list) -> None:
+        self.id = id
+        self.type = type
+        self.board = board
+        self.loop = board.loop
+        self.callback = None
+
+        self._value = 0
+        self._mode = None
+        self.capabilities = capabilities
+        self.reporting = False
 
     @property
     def mode(self) -> int:
         return self._mode
-    
-    async def analog_write(self, value: int):
-        if CAPABILITY_ANALOG_OUTPUT in self.capabilities:
-            converted_value = int(round(value*(2**self.capabilities[CAPABILITY_ANALOG_OUTPUT]-1)))
-            await self.board.send_data([ANALOG_MESSAGE+self.id, converted_value % 128, converted_value >> 7])
-            self.value = value
 
-    async def digital_write(self, value: bool):
+    async def digital_write(self, value: bool) -> None:
+        """
+        Write a digital value to a pin
+        """
         if CAPABILITY_DIGITAL_OUTPUT in self.capabilities:
-            await self.board.send_data([SET_DIGITAL_PIN_VALUE, self.id, value])
             self.value = value
+            return await self.board.send_packet(
+                [SET_DIGITAL_PIN_VALUE, self.id, value])
+        if CAPABILITY_ANALOG_OUTPUT in self.capabilities:
+            return await self.analog_write(1)
+        raise CapabilityNotAvailable()
 
-    async def pin_mode(self, mode: int):
-        if mode in self.capabilities:
-            await self.board.send_data([SET_PIN_MODE, self.id, mode])
-            self._mode = mode
+    async def analog_write(self, value: int) -> None:
+        """
+        Write an analog value to a pin ranging from 0 to 1
+        """
+        if PWM in self.capabilities:
+            converted_value = int(round(value*(
+                2**self.capabilities[CAPABILITY_ANALOG_OUTPUT]-1)))
+            await self.board.send_packet([
+                ANALOG_MESSAGE+self.id,
+                converted_value % 128,
+                converted_value >> 7])
+            self.value = value
         else:
             raise CapabilityNotAvailable()
 
-    async def set_reporting(self, value: bool):
+    async def pin_mode(self, mode: int) -> None:
+        """
+        Sets the pin's mode
+        Raises CapabilityNotAvailable
+        """
+        if mode not in self.capabilities:
+            raise CapabilityNotAvailable(
+                f"The capability {hex(mode)} is not available")
+        pin_number = (self.id
+                      if not self.type == ANALOG
+                      else len(self.board.digital)+self.id)
+        await self.board.send_packet([SET_PIN_MODE, pin_number, mode])
+        self._mode = mode
+
+    async def set_reporting(self, value: bool) -> None:
         """
         Send a report request.
         This is needed if you want to read inputs
         """
         if self.type == ANALOG:
-            await self.board.send_data(bytearray([REPORT_ANALOG_PIN+self.id, value]))
+            await self.board.send_packet(
+                bytearray([REPORT_ANALOG_PIN+self.id, value]))
         if self.type == DIGITAL:
-            await self.board.send_data(bytearray([REPORT_DIGITAL_PIN+self.id, value]))
+            port = self.id // 8
 
-    async def digital_read(self):
+            await self.board.send_packet(
+                bytearray([REPORT_DIGITAL_PORT+port, value]))
+
+    @property
+    def value(self) -> int:
+        return self._value
+
+    @value.setter
+    def value(self, value):
         """
-        Returns a digital value
-        For analog pins it returns if the analog value is >= half of the maximum value
+        Setter for the value property
+        This calls the callback routine if the value changes
         """
-        if self.mode == UNAVAILABLE:
-            raise IOError("Pin {id} is unavailable".format(id=self.id))
-        if self.type == ANALOG:
-            return int(self.value >= 2**self.capabilities[ANALOG_INPUT]/2)
-        return self.value
+        old_val = self._value
+        self._value = value
+        if self.callback and old_val != self._value:
+            if not asyncio.iscoroutinefunction(self.callback):
+                self.loop.run_in_executor(
+                    None, lambda: self.callback(self, value))
+            else:
+                asyncio.ensure_future(self.callback(self, value))
 
-    async def analog_read(self):
+    def set_callback(self, callback: Union[Callable, Coroutine] = None):
         """
-        This does not trigger a read
-        It just returns the value updated by analog reports or set by you
-        That means you need to do Pin.set_reporting(True) to read input
+        Sets the callback function for the Pin
+        The callback function will get called when the value changes
         """
-        return self.value
-
-    async def _update_analog(self, value: int):
-        if not value == self.value:
-            self.value = value
-            asyncio.run_coroutine_threadsafe(self.board.on_value_change(self, self.type, value), loop=self.board.loop)
-
-    async def _update_digital(self, value: bool):
-        if not value == self.value:
-            self.value = value
-            asyncio.run_coroutine_threadsafe(self.board.on_value_change(self, self.type, value), loop=self.board.loop)
-
-    def __repr__(self):
-        return "<Pin id={id} mode={mode} value={value}>".format(id=self.id, mode=self.mode, value=self.value)
+        self.callback = callback
