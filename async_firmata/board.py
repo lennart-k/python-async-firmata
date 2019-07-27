@@ -165,7 +165,7 @@ class FirmataBoard:
         await self.fetch_analog_mapping()
 
     async def close(self) -> None:
-        pass
+        self.writer.close()
 
 class SerialFirmataBoard(FirmataBoard):
     """
