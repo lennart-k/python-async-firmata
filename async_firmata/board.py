@@ -110,7 +110,6 @@ class FirmataBoard:
                 pin_buffer.clear()
             else:
                 pin_buffer.append(byte)
-        print(self._pin_specs)
 
     async def fetch_analog_mapping(self):
         """Fetches information about the board's analog mapping"""
