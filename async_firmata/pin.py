@@ -44,7 +44,7 @@ class Pin:
         """
         if PWM in self.capabilities:
             converted_value = int(round(value*(
-                2**self.capabilities[CAPABILITY_ANALOG_OUTPUT]-1)))
+                (1 << self.capabilities[CAPABILITY_ANALOG_OUTPUT])-1)))
             await self.board.send_packet([
                 ANALOG_MESSAGE+self.id,
                 converted_value % 128,
