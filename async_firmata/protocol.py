@@ -61,3 +61,7 @@ class Protocol(asyncio.Protocol):
     @property
     def connected(self) -> bool:
         return self._connected.is_set()
+
+    def close(self) -> None:
+        if self.connected:
+            self.transport.close()
